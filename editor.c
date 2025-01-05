@@ -6,8 +6,10 @@
 // Original terminal attributes
 struct termios original_termios;
 
-// Restore the original terminal settings
+// Restore the original terminal settings and clear the screen
 void disable_raw_mode() {
+    write(STDOUT_FILENO, "\x1b[2J", 4); // Clear screen
+    write(STDOUT_FILENO, "\x1b[H", 3);  // Move cursor to top-left
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios);
 }
 
@@ -18,25 +20,33 @@ void enable_raw_mode() {
     atexit(disable_raw_mode); // Ensure raw mode is disabled on exit
 
     struct termios raw = original_termios;
-    // Turn off canonical mode and echo
     raw.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);
-    // Disable Ctrl-S and Ctrl-Q
     raw.c_iflag &= ~(IXON);
-    // Disable output processing
     raw.c_oflag &= ~(OPOST);
 
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
 
-int main() {
-    // Enable raw mode
-    enable_raw_mode();
+// Clear the screen and move cursor to top-left
+void clear_screen() {
+    write(STDOUT_FILENO, "\x1b[2J", 4); // Clear screen
+    write(STDOUT_FILENO, "\x1b[H", 3);  // Move cursor to top-left
+}
 
-    printf("Press 'q' to quit.\n");
+// Draw a vertical line of characters on the left-hand side
+void draw_vertical_line() {
+    for (int i = 0; i < 24; i++) { // Assuming 24 rows for simplicity
+        write(STDOUT_FILENO, "~\r\n", 3); // Write ~ and move to the next line
+    }
+}
+
+int main() {
+    enable_raw_mode();
+    clear_screen();
+    draw_vertical_line();
 
     char c;
     while (1) {
-        // Read one character at a time
         if (read(STDIN_FILENO, &c, 1) == -1) {
             perror("read");
             exit(EXIT_FAILURE);
